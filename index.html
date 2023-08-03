@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenLayers Performance Test</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.5.0/css/ol.css">
+    <style>
+        #map {
+            width: 100%;
+            height: 400px;
+            margin-bottom: 20px;
+        }
+
+        #controls, #device-info {
+            padding: 10px;
+            background: white;
+            border: 1px solid #ccc;
+            margin-bottom: 10px;
+        }
+
+        #device-info {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .info-section {
+            flex: 0 0 48%;  /* Allow each section to grow but not shrink, taking up roughly half the space */
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <button onclick="renderFeatures(1000)">Test 1000 features</button>
+        <button onclick="renderFeatures(10000)">Test 10000 features</button>
+        <button onclick="renderFeatures(50000)">Test 50000 features</button>
+        <button onclick="renderFeatures(100000)">Test 100000 features</button>
+    </div>
+
+    <div id="map"></div>
+
+    <div id="device-info">
+        <div class="info-section" id="render-details">
+            Device Name: Placeholder<br>
+            Number of points: <span id="point-count">0</span><br>
+            Render duration in ms: <span id="render-duration">0</span><br>
+        </div>
+        <div class="info-section" id="device-details"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.5.0/build/ol.js"></script>
+    <script>
+        const map = new ol.Map({
+            target: 'map',
+            layers: [
+                new ol.layer.Tile({
+                    source: new ol.source.OSM()
+                })
+            ],
+            view: new ol.View({
+                center: ol.proj.fromLonLat([37.41, 8.82]),
+                zoom: 4
+            })
+        });
+
+        function generateRandomCoordinate() {
+            return [
+                Math.random() * 360 - 180,
+                Math.random() * 180 - 90
+            ];
+        }
+
+        function renderFeatures(count) {
+            const start = performance.now();
+            const features = [];
+
+            for (let i = 0; i < count; i++) {
+                const feature = new ol.Feature({
+                    geometry: new ol.geom.Point(ol.proj.fromLonLat(generateRandomCoordinate()))
+                });
+
+                features.push(feature);
+            }
+
+            const vectorSource = new ol.source.Vector({
+                features: features
+            });
+
+            const vectorLayer = new ol.layer.Vector({
+                source: vectorSource
+            });
+
+            map.getLayers().getArray().forEach(layer => {
+                if (layer instanceof ol.layer.Vector) {
+                    map.removeLayer(layer);
+                }
+            });
+
+            map.addLayer(vectorLayer);
+            const end = performance.now();
+
+            document.getElementById('point-count').innerText = count;
+            document.getElementById('render-duration').innerText = (end - start).toFixed(2);
+        }
+
+        // Fetch and display device info
+        async function displayDeviceInfo() {
+            const devicePanel = document.getElementById('device-details');
+            const gl = document.createElement('canvas').getContext('webgl');
+            const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+            const gpuName = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+            const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+
+            // Add more details if needed
+            devicePanel.innerHTML += `
+                GPU Name: ${gpuName} <br>
+                Is Mobile: ${isMobile} <br>
+            `;
+
+            // TODO: Include your method for fetching GPU score if you have one.
+            // For now, it's a placeholder:
+            devicePanel.innerHTML += `
+                GPU Score: Placeholder<br>
+            `;
+
+            // CPU test loop
+            const cpuStart = performance.now();
+            for (let i = 0; i < 10000000; i++) {} // simple loop, adjust for more complexity
+            const cpuEnd = performance.now();
+            devicePanel.innerHTML += `CPU Test Loop Duration: ${cpuEnd - cpuStart}ms<br>`;
+        }
+
+        displayDeviceInfo();
+    </script>
+</body>
+</html>
